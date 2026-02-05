@@ -1,9 +1,6 @@
 <?php
 /**
  * Copyright (C) 2017-2024 thirty bees
- * Copyright (C) 2007-2016 PrestaShop SA
- *
- * thirty bees is an extension to the PrestaShop software by PrestaShop SA.
  *
  * NOTICE OF LICENSE
  *
@@ -16,20 +13,25 @@
  * to license@thirtybees.com so we can send you a copy immediately.
  *
  * @author    thirty bees <modules@thirtybees.com>
- * @author    PrestaShop SA <contact@prestashop.com>
  * @copyright 2017-2024 thirty bees
- * @copyright 2007-2016 PrestaShop SA
  * @license   Academic Free License (AFL 3.0)
- * PrestaShop is an internationally registered trademark of PrestaShop SA.
  */
 
-header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
-header('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT');
+if (!defined('_TB_VERSION_')) {
+    exit;
+}
 
-header('Cache-Control: no-store, no-cache, must-revalidate');
-header('Cache-Control: post-check=0, pre-check=0', false);
-header('Pragma: no-cache');
+/**
+ * @param StatsModule $module
+ *
+ * @return bool
+ */
+function upgrade_module_2_4_0($module)
+{
+    try {
+        Db::getInstance()->execute('DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'sekeyword`');
+    } catch (PrestaShopException $e) {
+    }
 
-header('Location: ../');
-
-exit;
+    return true;
+}

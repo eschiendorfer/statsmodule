@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2017-2019 thirty bees
+ * Copyright (C) 2017-2024 thirty bees
  * Copyright (C) 2007-2016 PrestaShop SA
  *
  * thirty bees is an extension to the PrestaShop software by PrestaShop SA.
@@ -17,7 +17,7 @@
  *
  * @author    thirty bees <modules@thirtybees.com>
  * @author    PrestaShop SA <contact@prestashop.com>
- * @copyright 2017-2019 thirty bees
+ * @copyright 2017-2024 thirty bees
  * @copyright 2007-2016 PrestaShop SA
  * @license   Academic Free License (AFL 3.0)
  * PrestaShop is an internationally registered trademark of PrestaShop SA.
@@ -29,50 +29,46 @@ if (!defined('_TB_VERSION_')) {
 
 class StatsProduct extends StatsModule
 {
-    protected $type = 'Graph';
+    /**
+     * @var string
+     */
     protected $html = '';
+
+    /**
+     * @var string
+     */
     protected $query = '';
+
+    /**
+     * @var int
+     */
     protected $option = 0;
+
+    /**
+     * @var int
+     */
     protected $id_product = 0;
-    protected $packTracking = false;
 
     /**
      * @throws PrestaShopException
      */
     public function __construct()
     {
-        $this->name = 'statsproduct';
-        $this->tab = 'analytics_stats';
-        $this->version = '2.0.0';
-        $this->author = 'thirty bees';
-        $this->need_instance = 0;
-
         parent::__construct();
+        $this->type = static::TYPE_GRAPH;
 
-        $this->displayName = Translate::getModuleTranslation('statsmodule', 'Product details', 'statsmodule');
-        $this->description = Translate::getModuleTranslation('statsmodule', 'Adds detailed statistics for each product to the Stats dashboard.', 'statsmodule');
-
-        $this->packTracking = class_exists('OrderDetailPack');
-    }
-
-    /**
-     * @return bool
-     * @throws PrestaShopException
-     */
-    public function install()
-    {
-        return (parent::install() && $this->registerHook('AdminStatsModules'));
+        $this->displayName = $this->l('Product details');
     }
 
     /**
      * Returns total sales of product as individual item -- separate line in order
      *
      * @param int $productId
+     *
      * @return int
-     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    public function getTotalBought($productId)
+    public function getTotalBoughtIndividual($productId)
     {
         $dateBetween = ModuleGraph::getDateBetween();
         $productId = (int)$productId;
@@ -81,41 +77,38 @@ class StatsProduct extends StatsModule
             ->from('order_detail', 'od')
             ->innerJoin('orders', 'o', 'o.id_order = od.id_order')
             ->where("od.product_id = $productId")
-            ->where('o.valid = 1 ' . Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o'))
+            ->where('o.valid = 1 ' . Shop::addSqlRestriction(false, 'o'))
             ->where("o.date_add BETWEEN $dateBetween");
-        return (int)Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+        return (int)Db::readOnly()->getValue($sql);
     }
 
     /**
      * Returns total sales of product sold as part of a pack
      *
      * @param int $productId
+     *
      * @return int
-     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
     public function getTotalBoughtAsPartOfPack($productId)
     {
-        if ($this->packTracking) {
-            $dateBetween = ModuleGraph::getDateBetween();
-            $productId = (int)$productId;
-            $sql = (new DbQuery())
-                ->select('SUM(od.product_quantity * p.quantity) AS total')
-                ->from('order_detail', 'od')
-                ->innerJoin('order_detail_pack', 'p', 'p.id_order_detail = od.id_order_detail')
-                ->innerJoin('orders', 'o', 'o.id_order = od.id_order')
-                ->where("p.id_product = $productId")
-                ->where('o.valid = 1 ' . Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o'))
-                ->where("o.date_add BETWEEN $dateBetween");
-            return (int)Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
-        }
-        return 0;
+        $dateBetween = ModuleGraph::getDateBetween();
+        $productId = (int)$productId;
+        $sql = (new DbQuery())
+            ->select('SUM(od.product_quantity * p.quantity) AS total')
+            ->from('order_detail', 'od')
+            ->innerJoin('order_detail_pack', 'p', 'p.id_order_detail = od.id_order_detail')
+            ->innerJoin('orders', 'o', 'o.id_order = od.id_order')
+            ->where("p.id_product = $productId")
+            ->where('o.valid = 1 ' . Shop::addSqlRestriction(false, 'o'))
+            ->where("o.date_add BETWEEN $dateBetween");
+        return (int)Db::readOnly()->getValue($sql);
     }
 
     /**
-     * @param $id_product
+     * @param int $id_product
+     *
      * @return float
-     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
     public function getTotalSales($id_product)
@@ -125,17 +118,17 @@ class StatsProduct extends StatsModule
 				FROM `' . _DB_PREFIX_ . 'order_detail` od
 				LEFT JOIN `' . _DB_PREFIX_ . 'orders` o ON o.`id_order` = od.`id_order`
 				WHERE od.`product_id` = ' . (int)$id_product . '
-					' . Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o') . '
+					' . Shop::addSqlRestriction(false, 'o') . '
 					AND o.valid = 1
 					AND o.`date_add` BETWEEN ' . $date_between;
 
-        return (float)Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+        return (float)Db::readOnly()->getValue($sql);
     }
 
     /**
-     * @param $id_product
-     * @return int|mixed
-     * @throws PrestaShopDatabaseException
+     * @param int $id_product
+     *
+     * @return int
      * @throws PrestaShopException
      */
     public function getTotalViewed($id_product)
@@ -151,15 +144,13 @@ class StatsProduct extends StatsModule
 					AND p.`id_object` = ' . (int)$id_product . '
 					AND dr.`time_start` BETWEEN ' . $date_between . '
 					AND dr.`time_end` BETWEEN ' . $date_between;
-        $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
-
-        return isset($result['total']) ? $result['total'] : 0;
+        return (int)Db::readOnly()->getValue($sql);
     }
 
     /**
-     * @param $id_lang
-     * @return array|bool|PDOStatement|null
-     * @throws PrestaShopDatabaseException
+     * @param int $id_lang
+     *
+     * @return array
      * @throws PrestaShopException
      */
     private function getProducts($id_lang)
@@ -174,13 +165,13 @@ class StatsProduct extends StatsModule
 					' . (Tools::getValue('id_category') ? 'AND cp.id_category = ' . (int)Tools::getValue('id_category') : '') . '
 				ORDER BY pl.`name`';
 
-        return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+        return Db::readOnly()->getArray($sql);
     }
 
     /**
      * @param int $productId
+     *
      * @return array
-     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
     private function getSales($productId)
@@ -194,28 +185,23 @@ class StatsProduct extends StatsModule
             ->select('od.product_quantity')
             ->select('(od.product_price * od.product_quantity) as total')
             ->select('od.product_name')
+            ->select('IFNULL(p.quantity, 0) AS pack_quantity')
             ->from('orders', 'o')
             ->innerJoin('order_detail', 'od', 'o.id_order = od.id_order')
+            ->leftJoin('order_detail_pack', 'p', "(p.id_order_detail = od.id_order_detail AND p.id_product = $productId)")
             ->where('o.date_add BETWEEN ' . $this->getDate())
-            ->where('o.valid ' . Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o'));
+            ->where('o.valid ' . Shop::addSqlRestriction(false, 'o'))
+            ->where("(od.product_id = $productId OR p.id_product = $productId)");
 
-        if ($this->packTracking) {
-            $sql->leftJoin('order_detail_pack', 'p', "(p.id_order_detail = od.id_order_detail AND p.id_product = $productId)");
-            $sql->select('IFNULL(p.quantity, 0) AS pack_quantity');
-            $sql->where("(od.product_id = $productId OR p.id_product = $productId)");
-        } else {
-            $sql->select('0 AS pack_quantity');
-            $sql->where('od.product_id = ' . $productId);
-        }
-        $conn = Db::getInstance(_PS_USE_SQL_SLAVE_);
-        return $conn->executeS($sql);
+        $conn = Db::readOnly();
+        return $conn->getArray($sql);
     }
 
     /**
-     * @param $id_product
-     * @param $id_lang
-     * @return array|bool|PDOStatement|null
-     * @throws PrestaShopDatabaseException
+     * @param int $id_product
+     * @param int $id_lang
+     *
+     * @return array
      * @throws PrestaShopException
      */
     private function getCrossSales($id_product, $id_lang)
@@ -232,21 +218,20 @@ class StatsProduct extends StatsModule
 						AND o.valid = 1
 						AND od.product_id = ' . (int)$id_product . '
 					)
-					' . Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o') . '
+					' . Shop::addSqlRestriction(false, 'o') . '
 					AND o.date_add BETWEEN ' . $this->getDate() . '
 					AND o.valid = 1
 					AND od.product_id != ' . (int)$id_product . '
 				GROUP BY od.product_id
 				ORDER BY pqty DESC';
 
-        return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+        return Db::readOnly()->getArray($sql);
     }
 
     /**
      * Hook
      *
      * @return string
-     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
     public function hookAdminStatsModules()
@@ -255,69 +240,71 @@ class StatsProduct extends StatsModule
         $id_category = (int)Tools::getValue('id_category');
         $currency = Context::getContext()->currency;
 
-        if (Tools::getValue('export'))
-            if (!Tools::getValue('exportType'))
-                $this->csvExport(array(
+        if (Tools::getValue('export')) {
+            if (!Tools::getValue('exportType')) {
+                $this->csvExport([
                     'layers' => 2,
                     'type' => 'line',
                     'option' => '42'
-                ));
+                ]);
+            }
+        }
 
         $this->html = '
 			<div class="panel-heading">
 				' . $this->displayName . '
 			</div>
-			<h4>' . Translate::getModuleTranslation('statsmodule', 'Guide', 'statsmodule') . '</h4>
+			<h4>' . $this->l('Guide') . '</h4>
 			<div class="alert alert-warning">
-				<h4>' . Translate::getModuleTranslation('statsmodule', 'Number of purchases compared to number of views', 'statsmodule') . '</h4>
-					' . Translate::getModuleTranslation('statsmodule', 'After choosing a category and selecting a product, informational graphs will appear.', 'statsmodule') . '
+				<h4>' . $this->l('Number of purchases compared to number of views') . '</h4>
+					' . $this->l('After choosing a category and selecting a product, informational graphs will appear.') . '
 					<ul>
-						<li class="bullet">' . Translate::getModuleTranslation('statsmodule', 'If you notice that a product is often purchased but viewed infrequently, you should display it more prominently in your Front Office.', 'statsmodule') . '</li>
-						<li class="bullet">' . Translate::getModuleTranslation('statsmodule', 'On the other hand, if a product has many views but is not often purchased, we advise you to check or modify this product\'s information, description and photography again, see if you can find something better.', 'statsmodule') . '
+						<li class="bullet">' . $this->l('If you notice that a product is often purchased but viewed infrequently, you should display it more prominently in your Front Office.') . '</li>
+						<li class="bullet">' . $this->l('On the other hand, if a product has many views but is not often purchased, we advise you to check or modify this product\'s information, description and photography again, see if you can find something better.') . '
 						</li>
 					</ul>
 			</div>';
         if ($id_product = (int)Tools::getValue('id_product')) {
             if (Tools::getValue('export')) {
-                if (Tools::getValue('exportType') == 1)
-                    $this->csvExport(array(
+                if (Tools::getValue('exportType') == 1) {
+                    $this->csvExport([
                         'layers' => 2,
                         'type' => 'line',
                         'option' => '1-' . $id_product
-                    ));
-                elseif (Tools::getValue('exportType') == 2)
-                    $this->csvExport(array(
+                    ]);
+                }
+                elseif (Tools::getValue('exportType') == 2) {
+                    $this->csvExport([
                         'type' => 'pie',
                         'option' => '3-' . $id_product
-                    ));
+                    ]);
+                }
             }
             $product = new Product($id_product, false, $this->context->language->id);
-            $totalBought = $this->getTotalBought($product->id);
-            $isPartOfPack = $this->packTracking && Pack::isPacked($product->id);
+            $totalBoughtIndividual = $this->getTotalBoughtIndividual($product->id);
+            $isPartOfPack = Pack::isPacked($product->id);
             $totalBoughtPack = $isPartOfPack ? $this->getTotalBoughtAsPartOfPack($product->id) : 0;
+            $totalBought = $totalBoughtIndividual + $totalBoughtPack;
             $total_sales = $this->getTotalSales($product->id);
             $total_viewed = $this->getTotalViewed($product->id);
-            $hasSales = $totalBought > 0 || $totalBoughtPack > 0;
-            $this->html .= '<h4>' . $product->name . ' - ' . Translate::getModuleTranslation('statsmodule', 'Details', 'statsmodule') . '</h4>
+            $hasSales = $totalBoughtIndividual > 0 || $totalBoughtPack > 0;
+            $this->html .= '<h4>' . $product->name . ' - ' . $this->l('Details') . '</h4>
 			<div class="row row-margin-bottom">
 				<div class="col-lg-12">
 					<div class="col-lg-8">
-						' . $this->engine($this->type, array(
-                    'layers' => 2,
-                    'type' => 'line',
-                    'option' => '1-' . $id_product
-                )) . '
+						' . $this->engine([ 'layers' => 2, 'type' => 'line', 'option' => '1-' . $id_product ]) . '
 					</div>
 					<div class="col-lg-4">
 						<ul class="list-unstyled">
-							<li>' . Translate::getModuleTranslation('statsmodule', 'Total bought', 'statsmodule') . ' ' . $totalBought . '</li>
-							' . ($isPartOfPack ? ('<li>' . Translate::getModuleTranslation('statsmodule', 'Total bought in pack', 'statsmodule') . ' ' . $totalBoughtPack . '</li>') : '') . '
-							<li>' . Translate::getModuleTranslation('statsmodule', 'Sales (tax excluded)', 'statsmodule') . ' ' . Tools::displayprice($total_sales, $currency) . '</li>
-							<li>' . Translate::getModuleTranslation('statsmodule', 'Total viewed', 'statsmodule') . ' ' . $total_viewed . '</li>
-							<li>' . Translate::getModuleTranslation('statsmodule', 'Conversion rate', 'statsmodule') . ' ' . number_format($total_viewed ? $totalBought / $total_viewed : 0, 2) . '</li>
+							<li>' . $this->l('Total bought') . ' ' . $totalBought . '</li>
+							' . ($isPartOfPack ? ('<li>' . $this->l('Total bought (individual)') . ' ' . $totalBoughtIndividual . '</li>') : '') . '
+							' . ($isPartOfPack ? ('<li>' . $this->l('Total bought (part of pack)') . ' ' . $totalBoughtPack . '</li>') : '') . '
+							<li>' . $this->l('Sales (tax excluded)') . ' ' . Tools::displayprice($total_sales, $currency) . '</li>
+							<li>' . $this->l('Total viewed') . ' ' . $total_viewed . '</li>
+							<li>' . $this->l('Conversion rate') . ' ' . number_format($total_viewed ? $totalBoughtIndividual / $total_viewed : 0, 2) . '</li>
 						</ul>
 						<a class="btn btn-default export-csv" href="' . Tools::safeOutput($_SERVER['REQUEST_URI']) . '&export=1&exportType=1">
-							<i class="icon-cloud-upload"></i> ' . Translate::getModuleTranslation('statsmodule', 'CSV Export', 'statsmodule') . '
+							<i class="icon-cloud-upload"></i> ' . $this->l('CSV Export') . '
 						</a>
 					</div>
 				</div>
@@ -326,37 +313,37 @@ class StatsProduct extends StatsModule
                 $hasAttribute = $product->hasAttributes();
                 if ($hasAttribute) {
                     $this->html .= '
-                        <h3 class="space">' . Translate::getModuleTranslation('statsmodule', 'Attribute sales distribution', 'statsmodule') . '</h3>
-                        <center>' . $this->engine($this->type, array('type' => 'pie', 'option' => '3-' . $id_product)) . '</center><br />
-                        <a href="' . Tools::safeOutput($_SERVER['REQUEST_URI']) . '&export=1&exportType=2"><img src="../img/admin/asterisk.gif" alt=""/>' . Translate::getModuleTranslation('statsmodule', 'CSV Export', 'statsmodule') . '</a>';
+                        <h3 class="space">' . $this->l('Attribute sales distribution') . '</h3>
+                        <center>' . $this->engine(['type' => 'pie', 'option' => '3-' . $id_product]) . '</center><br />
+                        <a href="' . Tools::safeOutput($_SERVER['REQUEST_URI']) . '&export=1&exportType=2"><img src="../img/admin/asterisk.gif" alt=""/>' . $this->l('CSV Export') . '</a>';
                 }
 
                 $sales = $this->getSales($id_product);
                 $this->html .= '
-				<h4>' . Translate::getModuleTranslation('statsmodule', 'Sales', 'statsmodule') . '</h4>
+				<h4>' . $this->l('Sales') . '</h4>
 				<div style="overflow-y:scroll;height:' . min(400, (count($sales) + 1) * 32) . 'px">
 					<table class="table">
 						<thead>
 							<tr>
 								<th>
-									<span class="title_box  active">' . Translate::getModuleTranslation('statsmodule', 'Date', 'statsmodule') . '</span>
+									<span class="title_box  active">' . $this->l('Date') . '</span>
 								</th>
 								<th>
-									<span class="title_box  active">' . Translate::getModuleTranslation('statsmodule', 'Order', 'statsmodule') . '</span>
+									<span class="title_box  active">' . $this->l('Order') . '</span>
 								</th>
 								<th>
-									<span class="title_box  active">' . Translate::getModuleTranslation('statsmodule', 'Customer', 'statsmodule') . '</span>
+									<span class="title_box  active">' . $this->l('Customer') . '</span>
 								</th>
 								<th>
-								    <span class="title_box  active">' . Translate::getModuleTranslation('statsmodule', 'Product name', 'statsmodule') . '</span>
+								    <span class="title_box  active">' . $this->l('Product name') . '</span>
 								</th>
 								<th>
-									<span class="title_box  active">' . Translate::getModuleTranslation('statsmodule', 'Quantity', 'statsmodule') . '</span>
+									<span class="title_box  active">' . $this->l('Quantity') . '</span>
 								</th>
-								' . ($isPartOfPack ? '<th><span class="title_box  active">' . Translate::getModuleTranslation('statsmodule', 'Items in pack', 'statsmodule') . '</span></th>' : '') . '
-								' . ($isPartOfPack ? '<th><span class="title_box  active">' . Translate::getModuleTranslation('statsmodule', 'Items total', 'statsmodule') . '</span></th>' : '') . '
+								' . ($isPartOfPack ? '<th><span class="title_box  active">' . $this->l('Items in pack') . '</span></th>' : '') . '
+								' . ($isPartOfPack ? '<th><span class="title_box  active">' . $this->l('Items total') . '</span></th>' : '') . '
 								<th>
-									<span class="title_box  active">' . Translate::getModuleTranslation('statsmodule', 'Price', 'statsmodule') . '</span>
+									<span class="title_box  active">' . $this->l('Price') . '</span>
 								</th>
 							</tr>
 						</thead>
@@ -385,31 +372,32 @@ class StatsProduct extends StatsModule
                 $cross_selling = $this->getCrossSales($id_product, $this->context->language->id);
                 if (count($cross_selling)) {
                     $this->html .= '
-					<h4>' . Translate::getModuleTranslation('statsmodule', 'Cross selling', 'statsmodule') . '</h4>
+					<h4>' . $this->l('Cross selling') . '</h4>
 					<div style="overflow-y:scroll;height:200px">
 						<table class="table">
 							<thead>
 								<tr>
 									<th>
-										<span class="title_box active">' . Translate::getModuleTranslation('statsmodule', 'Product name', 'statsmodule') . '</span>
+										<span class="title_box active">' . $this->l('Product name') . '</span>
 									</th>
 									<th>
-										<span class="title_box active">' . Translate::getModuleTranslation('statsmodule', 'Quantity sold', 'statsmodule') . '</span>
+										<span class="title_box active">' . $this->l('Quantity sold') . '</span>
 									</th>
 									<th>
-										<span class="title_box active">' . Translate::getModuleTranslation('statsmodule', 'Average price', 'statsmodule') . '</span>
+										<span class="title_box active">' . $this->l('Average price') . '</span>
 									</th>
 								</tr>
 							</thead>
 						<tbody>';
                     $token_products = Tools::getAdminToken('AdminProducts' . (int)Tab::getIdFromClassName('AdminProducts') . (int)$this->context->employee->id);
-                    foreach ($cross_selling as $selling)
+                    foreach ($cross_selling as $selling) {
                         $this->html .= '
 							<tr>
 								<td><a href="?tab=AdminProducts&id_product=' . (int)$selling['id_product'] . '&addproduct&token=' . $token_products . '">' . $selling['pname'] . '</a></td>
 								<td class="text-center">' . (int)$selling['pqty'] . '</td>
 								<td class="text-right">' . Tools::displayprice($selling['pprice'], $currency) . '</td>
 							</tr>';
+                    }
                     $this->html .= '
 							</tbody>
 						</table>
@@ -417,43 +405,39 @@ class StatsProduct extends StatsModule
                 }
             }
         } else {
-            $categories = Category::getCategories((int)$this->context->language->id, true, false);
             $this->html .= '
 			<form action="#" method="post" id="categoriesForm" class="form-horizontal">
 				<div class="row row-margin-bottom">
 					<label class="control-label col-lg-3">
-						<span title="" data-toggle="tooltip" class="label-tooltip" data-original-title="' . Translate::getModuleTranslation('statsmodule', 'Click on a product to access its statistics!', 'statsmodule') . '">
-							' . Translate::getModuleTranslation('statsmodule', 'Choose a category', 'statsmodule') . '
+						<span title="" data-toggle="tooltip" class="label-tooltip" data-original-title="' . $this->l('Click on a product to access its statistics!') . '">
+							' . $this->l('Choose a category') . '
 						</span>
 					</label>
-					<div class="col-lg-3">
+					<div class="col-lg-9">
 						<select name="id_category" onchange="$(\'#categoriesForm\').submit();">
-							<option value="0">' . Translate::getModuleTranslation('statsmodule', 'All', 'statsmodule') . '</option>';
-            foreach ($categories as $category)
-                $this->html .= '<option value="' . $category['id_category'] . '"' . ($id_category == $category['id_category'] ? ' selected="selected"' : '') . '>' . $category['name'] . '</option>';
-            $this->html .= '
+						' . $this->utils->getCategoryOptions($id_category). '
 						</select>
 					</div>
 				</div>
 			</form>
-			<h4>' . Translate::getModuleTranslation('statsmodule', 'Products available', 'statsmodule') . '</h4>
+			<h4>' . $this->l('Products available') . '</h4>
 			<table class="table" style="border: 0; cellspacing: 0;">
 				<thead>
 					<tr>
 						<th>
-							<span class="title_box  active">' . Translate::getModuleTranslation('statsmodule', 'Reference', 'statsmodule') . '</span>
+							<span class="title_box  active">' . $this->l('Reference') . '</span>
 						</th>
 						<th>
-							<span class="title_box  active">' . Translate::getModuleTranslation('statsmodule', 'Name', 'statsmodule') . '</span>
+							<span class="title_box  active">' . $this->l('Name') . '</span>
 						</th>
 						<th>
-							<span class="title_box  active">' . Translate::getModuleTranslation('statsmodule', 'Available quantity for sale', 'statsmodule') . '</span>
+							<span class="title_box  active">' . $this->l('Available quantity for sale') . '</span>
 						</th>
 					</tr>
 				</thead>
 				<tbody>';
 
-            foreach ($this->getProducts($this->context->language->id) as $product)
+            foreach ($this->getProducts($this->context->language->id) as $product) {
                 $this->html .= '
 				<tr>
 					<td>' . $product['reference'] . '</td>
@@ -462,12 +446,13 @@ class StatsProduct extends StatsModule
 					</td>
 					<td>' . $product['quantity'] . '</td>
 				</tr>';
+            }
 
             $this->html .= '
 				</tbody>
 			</table>
 			<a class="btn btn-default export-csv" href="' . Tools::safeOutput($_SERVER['REQUEST_URI'] . '&export=1') . '">
-				<i class="icon-cloud-upload"></i> ' . Translate::getModuleTranslation('statsmodule', 'CSV Export', 'statsmodule') . '
+				<i class="icon-cloud-upload"></i> ' . $this->l('CSV Export') . '
 			</a>';
         }
 
@@ -475,34 +460,57 @@ class StatsProduct extends StatsModule
     }
 
     /**
-     * @param $option
-     * @param $layers
+     * @param int $option
+     * @param int $layers
+     *
      * @return void
-     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
     public function setOption($option, $layers = 1)
     {
         $options = explode('-', $option);
-        if (count($options) === 2)
+        if (count($options) === 2) {
             list($this->option, $this->id_product) = $options;
-        else
+        }
+        else {
             $this->option = $option;
+        }
         $date_between = $this->getDate();
         switch ($this->option) {
             case 1:
-                $this->_titles['main'][0] = Translate::getModuleTranslation('statsmodule', 'Popularity', 'statsmodule');
-                $this->_titles['main'][1] = Translate::getModuleTranslation('statsmodule', 'Sales', 'statsmodule');
-                $this->_titles['main'][2] = Translate::getModuleTranslation('statsmodule', 'Visits (x100)', 'statsmodule');
+                $this->_titles['main'][0] = $this->l('Sales');
+                $this->_titles['main'][1] = $this->l('Popularity');
                 $this->query = [];
-                $this->query[0] = 'SELECT o.`date_add`, SUM(od.`product_quantity`) AS total
-						FROM `' . _DB_PREFIX_ . 'order_detail` od
-						LEFT JOIN `' . _DB_PREFIX_ . 'orders` o ON o.`id_order` = od.`id_order`
-						WHERE od.`product_id` = ' . (int)$this->id_product . '
-							' . Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o') . '
-							AND o.valid = 1
-							AND o.`date_add` BETWEEN ' . $date_between . '
-						GROUP BY o.`date_add`';
+                if (Pack::isPacked($this->id_product)) {
+                    $this->query[0] = '
+                              SELECT 
+                                DATE_FORMAT(o.`date_add`, "%Y-%m-%d") as date_add, 
+                                (
+		                            COALESCE((SELECT SUM(od.product_quantity) FROM ' . _DB_PREFIX_. 'order_detail od WHERE od.id_order = o.id_order AND od.product_id = ' . (int)$this->id_product . '), 0)
+		                            +
+		                            COALESCE((SELECT SUM(od.product_quantity * p.quantity) FROM ' . _DB_PREFIX_. 'order_detail od INNER JOIN ' . _DB_PREFIX_. 'order_detail_pack p ON (p.id_order_detail = od.id_order_detail) WHERE od.id_order = o.id_order AND p.id_product = ' . (int)$this->id_product . '), 0)
+	                            ) AS total  
+                              FROM ' . _DB_PREFIX_ . 'orders o
+                              WHERE o.valid = 1
+                                AND o.`date_add` BETWEEN ' . $date_between . '
+                                   ' . Shop::addSqlRestriction(false, 'o') . '
+                                AND (
+		                            EXISTS(SELECT 1 FROM ' . _DB_PREFIX_. 'order_detail od WHERE od.id_order = o.id_order AND od.product_id = ' . (int)$this->id_product . ')
+		                            OR
+		                            EXISTS(SELECT 1 FROM ' . _DB_PREFIX_. 'order_detail od INNER JOIN ' . _DB_PREFIX_. 'order_detail_pack p ON (p.id_order_detail = od.id_order_detail) WHERE od.id_order = o.id_order AND p.id_product = ' . (int)$this->id_product . ')
+	                            )   
+                              GROUP BY o.`date_add`';
+                } else {
+                    $this->query[0] = 'SELECT DATE_FORMAT(o.`date_add`, "%Y-%m-%d") as date_add, SUM(od.`product_quantity`) AS total
+                              FROM `' . _DB_PREFIX_ . 'order_detail` od
+                              LEFT JOIN `' . _DB_PREFIX_ . 'orders` o ON o.`id_order` = od.`id_order`
+                              WHERE od.`product_id` = ' . (int)$this->id_product . '
+                                   ' . Shop::addSqlRestriction(false, 'o') . '
+                                   AND o.valid = 1
+                                   AND o.`date_add` BETWEEN ' . $date_between . '
+                              GROUP BY o.`date_add`';
+                }
+
 
                 $this->query[1] = 'SELECT dr.`time_start` AS date_add, (SUM(pv.`counter`) / 100) AS total
 						FROM `' . _DB_PREFIX_ . 'page_viewed` pv
@@ -518,29 +526,29 @@ class StatsProduct extends StatsModule
                 break;
 
             case 3:
-                $this->query = 'SELECT product_attribute_id, SUM(od.`product_quantity`) AS total
+                $this->query = 'SELECT od.product_attribute_id, MAX(od.product_name) as name, SUM(od.`product_quantity`) AS total
 						FROM `' . _DB_PREFIX_ . 'orders` o
 						LEFT JOIN `' . _DB_PREFIX_ . 'order_detail` od ON o.`id_order` = od.`id_order`
 						WHERE od.`product_id` = ' . (int)$this->id_product . '
-							' . Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o') . '
+							' . Shop::addSqlRestriction(false, 'o') . '
 							AND o.valid = 1
 							AND o.`date_add` BETWEEN ' . $date_between . '
 						GROUP BY od.`product_attribute_id`';
-                $this->_titles['main'] = Translate::getModuleTranslation('statsmodule', 'Attributes', 'statsmodule');
+                $this->_titles['main'] = $this->l('Attributes');
                 break;
 
             case 42:
-                $this->_titles['main'][1] = Translate::getModuleTranslation('statsmodule', 'Reference', 'statsmodule');
-                $this->_titles['main'][2] = Translate::getModuleTranslation('statsmodule', 'Name', 'statsmodule');
-                $this->_titles['main'][3] = Translate::getModuleTranslation('statsmodule', 'Stock', 'statsmodule');
+                $this->_titles['main'][1] = $this->l('Reference');
+                $this->_titles['main'][2] = $this->l('Name');
+                $this->_titles['main'][3] = $this->l('Stock');
                 break;
         }
     }
 
     /**
-     * @param $layers
+     * @param int $layers
+     *
      * @return void
-     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
     protected function getData($layers)
@@ -553,92 +561,105 @@ class StatsProduct extends StatsModule
                 $this->_values[2][] = $product['quantity'];
                 $this->_legend[] = $product['id_product'];
             }
-        } else if ($this->option != 3)
-            $this->setDateGraph($layers, true);
-        else {
-            $product = new Product($this->id_product, false, (int)$this->getLang());
+        } else {
+            if ($this->option != 3) {
+                $this->setDateGraph($layers, true);
+            } else {
+                $product = new Product($this->id_product, false, (int)$this->getLang());
 
-            $comb_array = array();
-            $assoc_names = array();
-            $combinations = $product->getAttributeCombinations((int)$this->getLang());
-            foreach ($combinations as $combination)
-                $comb_array[$combination['id_product_attribute']][] = array(
-                    'group' => $combination['group_name'],
-                    'attr' => $combination['attribute_name']
-                );
-            foreach ($comb_array as $id_product_attribute => $product_attribute) {
-                $list = '';
-                foreach ($product_attribute as $attribute)
-                    $list .= trim($attribute['group']) . ' - ' . trim($attribute['attr']) . ', ';
-                $list = rtrim($list, ', ');
-                $assoc_names[$id_product_attribute] = $list;
-            }
+                $comb_array = [];
+                $assoc_names = [];
+                $combinations = $product->getAttributeCombinations((int)$this->getLang());
+                foreach ($combinations as $combination) {
+                    $comb_array[$combination['id_product_attribute']][] = [
+                        'group' => $combination['group_name'],
+                        'attr' => $combination['attribute_name']
+                    ];
+                }
+                foreach ($comb_array as $id_product_attribute => $product_attribute) {
+                    $list = '';
+                    foreach ($product_attribute as $attribute) {
+                        $list .= trim($attribute['group']) . ' - ' . trim($attribute['attr']) . ', ';
+                    }
+                    $list = rtrim($list, ', ');
+                    $assoc_names[$id_product_attribute] = $list;
+                }
 
-            $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($this->query);
-            foreach ($result as $row) {
-                $this->_values[] = $row['total'];
-                $this->_legend[] = @$assoc_names[$row['product_attribute_id']];
+                $result = Db::readOnly()->getArray($this->query);
+                foreach ($result as $row) {
+                    $attributeId = (int)$row['product_attribute_id'];
+                    $this->_values[] = $row['total'];
+                    $this->_legend[] = $assoc_names[$attributeId] ?? $row['name'];
+                }
             }
         }
     }
 
     /**
-     * @param $layers
+     * @param int $layers
+     *
      * @return void
-     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
     protected function setAllTimeValues($layers)
     {
+        $conn = Db::readOnly();
         for ($i = 0; $i < $layers; $i++) {
-            $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($this->query[$i]);
-            foreach ($result as $row)
+            $result = $conn->getArray($this->query[$i]);
+            foreach ($result as $row) {
                 $this->_values[$i][(int)substr($row['date_add'], 0, 4)] += $row['total'];
+            }
         }
     }
 
     /**
-     * @param $layers
+     * @param int $layers
+     *
      * @return void
-     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
     protected function setYearValues($layers)
     {
+        $conn = Db::readOnly();
         for ($i = 0; $i < $layers; $i++) {
-            $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($this->query[$i]);
-            foreach ($result as $row)
+            $result = $conn->getArray($this->query[$i]);
+            foreach ($result as $row) {
                 $this->_values[$i][(int)substr($row['date_add'], 5, 2)] += $row['total'];
+            }
         }
     }
 
     /**
-     * @param $layers
+     * @param int $layers
+     *
      * @return void
-     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
     protected function setMonthValues($layers)
     {
+        $conn = Db::readOnly();
         for ($i = 0; $i < $layers; $i++) {
-            $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($this->query[$i]);
-            foreach ($result as $row)
+            $result = $conn->getArray($this->query[$i]);
+            foreach ($result as $row) {
                 $this->_values[$i][(int)substr($row['date_add'], 8, 2)] += $row['total'];
+            }
         }
     }
 
     /**
-     * @param $layers
+     * @param int $layers
+     *
      * @return void
-     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
     protected function setDayValues($layers)
     {
+        $conn = Db::readOnly();
         for ($i = 0; $i < $layers; $i++) {
-            $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($this->query[$i]);
-            foreach ($result as $row)
+            $result = $conn->getArray($this->query[$i]);
+            foreach ($result as $row) {
                 $this->_values[$i][(int)substr($row['date_add'], 11, 2)] += $row['total'];
+            }
         }
     }
 }

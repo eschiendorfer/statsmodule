@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2017-2019 thirty bees
+ * Copyright (C) 2017-2024 thirty bees
  * Copyright (C) 2007-2016 PrestaShop SA
  *
  * thirty bees is an extension to the PrestaShop software by PrestaShop SA.
@@ -17,7 +17,7 @@
  *
  * @author    thirty bees <modules@thirtybees.com>
  * @author    PrestaShop SA <contact@prestashop.com>
- * @copyright 2017-2019 thirty bees
+ * @copyright 2017-2024 thirty bees
  * @copyright 2007-2016 PrestaShop SA
  * @license   Academic Free License (AFL 3.0)
  * PrestaShop is an internationally registered trademark of PrestaShop SA.
@@ -29,98 +29,108 @@ if (!defined('_TB_VERSION_')) {
 
 class StatsPersonalInfos extends StatsModule
 {
-    protected $type = 'Graph';
+    /**
+     * @var string
+     */
     protected $html = '';
+
+    /**
+     * @var string
+     */
     protected $option;
 
     public function __construct()
     {
-        $this->name = 'statspersonalinfos';
-        $this->tab = 'analytics_stats';
-        $this->version = '2.0.0';
-        $this->author = 'thirty bees';
-        $this->need_instance = 0;
-
         parent::__construct();
+        $this->type = static::TYPE_GRAPH;
 
-        $this->displayName = Translate::getModuleTranslation('statsmodule', 'Registered customer information', 'statsmodule');
-        $this->description = Translate::getModuleTranslation('statsmodule', 'Adds information about your registered customers (such as gender and age) to the Stats dashboard.', 'statsmodule');
+        $this->displayName = $this->l('Registered customer information');
     }
 
-    public function install()
-    {
-        return (parent::install() && $this->registerHook('AdminStatsModules'));
-    }
-
+    /**
+     * @return string
+     * @throws PrestaShopException
+     */
     public function hookAdminStatsModules()
     {
         $this->html = '
 			<div class="panel-heading">
-				'.$this->displayName.'
+				' . $this->displayName . '
 			</div>
-			<h4>'.Translate::getModuleTranslation('statsmodule', 'Guide', 'statsmodule').'</h4>
+			<h4>' . $this->l('Guide') . '</h4>
 			<div class="alert alert-warning">
-				<h4>'.Translate::getModuleTranslation('statsmodule', 'Target your audience', 'statsmodule').'</h4>
-				<p>'.
-            Translate::getModuleTranslation('statsmodule', 'In order for each message to have an impact, you need to know who it is being addressed to. ', 'statsmodule').
-            '<br>'.
-            Translate::getModuleTranslation('statsmodule', 'Defining your target audience is essential when choosing the right tools to win them over.', 'statsmodule').
-            '<br>'.
-            Translate::getModuleTranslation('statsmodule', 'It is best to limit an action to a group -- or to groups -- of clients.', 'statsmodule').
-            '<br>'.
-            Translate::getModuleTranslation('statsmodule', 'Storing registered customer information allows you to accurately define customer profiles so you can adapt your special deals and promotions.', 'statsmodule').'
+				<h4>' . $this->l('Target your audience') . '</h4>
+				<p>' .
+            $this->l('In order for each message to have an impact, you need to know who it is being addressed to. ') .
+            '<br>' .
+            $this->l('Defining your target audience is essential when choosing the right tools to win them over.') .
+            '<br>' .
+            $this->l('It is best to limit an action to a group -- or to groups -- of clients.') .
+            '<br>' .
+            $this->l('Storing registered customer information allows you to accurately define customer profiles so you can adapt your special deals and promotions.') . '
 				</p>
 				<div>
-					'.Translate::getModuleTranslation('statsmodule', 'You can increase your sales by:', 'statsmodule').'
+					' . $this->l('You can increase your sales by:') . '
 					<ul>
-						<li class="bullet">'.Translate::getModuleTranslation('statsmodule', 'Launching targeted advertisement campaigns.', 'statsmodule').'</li>
-						<li class="bullet">'.Translate::getModuleTranslation('statsmodule', 'Contacting a group of clients by email or newsletter.', 'statsmodule').'</li>
+						<li class="bullet">' . $this->l('Launching targeted advertisement campaigns.') . '</li>
+						<li class="bullet">' . $this->l('Contacting a group of clients by email or newsletter.') . '</li>
 					</ul>
 				</div>
 			</div>';
-        $has_customers = (bool) Db::getInstance()->getValue('SELECT id_customer FROM '._DB_PREFIX_.'customer');
+        $conn = Db::readOnly();
+        $has_customers = (bool)$conn->getValue('SELECT id_customer FROM ' . _DB_PREFIX_ . 'customer');
         if ($has_customers) {
-            if (Tools::getValue('export'))
-                if (Tools::getValue('exportType') == 'gender')
-                    $this->csvExport(array(
-                        'type'   => 'pie',
-                        'option' => 'gender',
-                    ));
-                else if (Tools::getValue('exportType') == 'age')
-                    $this->csvExport(array(
-                        'type'   => 'pie',
-                        'option' => 'age',
-                    ));
-                else if (Tools::getValue('exportType') == 'country')
-                    $this->csvExport(array(
-                        'type'   => 'pie',
-                        'option' => 'country',
-                    ));
-                else if (Tools::getValue('exportType') == 'currency')
-                    $this->csvExport(array(
-                        'type'   => 'pie',
-                        'option' => 'currency',
-                    ));
-                else if (Tools::getValue('exportType') == 'language')
-                    $this->csvExport(array(
-                        'type'   => 'pie',
-                        'option' => 'language',
-                    ));
+            if (Tools::getValue('export')) {
+                if (Tools::getValue('exportType') == 'social-titles') {
+                    $this->csvExport([
+                        'type' => 'pie',
+                        'option' => 'social-titles',
+                    ]);
+                } else {
+                    if (Tools::getValue('exportType') == 'age') {
+                        $this->csvExport([
+                            'type' => 'pie',
+                            'option' => 'age',
+                        ]);
+                    } else {
+                        if (Tools::getValue('exportType') == 'country') {
+                            $this->csvExport([
+                                'type' => 'pie',
+                                'option' => 'country',
+                            ]);
+                        } else {
+                            if (Tools::getValue('exportType') == 'currency') {
+                                $this->csvExport([
+                                    'type' => 'pie',
+                                    'option' => 'currency',
+                                ]);
+                            } else {
+                                if (Tools::getValue('exportType') == 'language') {
+                                    $this->csvExport([
+                                        'type' => 'pie',
+                                        'option' => 'language',
+                                    ]);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             $this->html .= '
 				<div class="row row-margin-bottom">
 					<div class="col-lg-12">
 						<div class="col-lg-8">
-							'.$this->engine($this->type, array(
-                    'type'   => 'pie',
-                    'option' => 'gender',
-                )).'
+							' . $this->engine([
+                    'type' => 'pie',
+                    'option' => 'social-titles',
+                ]) . '
 						</div>
 						<div class="col-lg-4">
-							<p>'.Translate::getModuleTranslation('statsmodule', 'Gender distribution allows you to determine the percentage of men and women shoppers on your store.', 'statsmodule').'</p>
+							<p>' . $this->l('Social titles distribution allows you to determine the percentage of social titles used by shoppers on your store.') . '</p>
 							<hr/>
-							<a class="btn btn-default export-csv" href="'.Tools::safeOutput($_SERVER['REQUEST_URI'].'&export=1&exportType=gender').'">
-								<i class="icon-cloud-upload"></i> '.Translate::getModuleTranslation('statsmodule', 'CSV Export', 'statsmodule').'
+							<a class="btn btn-default export-csv" href="' . Tools::safeOutput($_SERVER['REQUEST_URI'] . '&export=1&exportType=gender') . '">
+								<i class="icon-cloud-upload"></i> ' . $this->l('CSV Export') . '
 							</a>
 						</div>
 					</div>
@@ -128,16 +138,13 @@ class StatsPersonalInfos extends StatsModule
 				<div class="row row-margin-bottom">
 					<div class="col-lg-12">
 						<div class="col-lg-8">
-							'.$this->engine($this->type, array(
-                    'type'   => 'pie',
-                    'option' => 'age',
-                )).'
+							' . $this->engine([ 'type' => 'pie', 'option' => 'age' ]) . '
 						</div>
 						<div class="col-lg-4">
-							<p>'.Translate::getModuleTranslation('statsmodule', 'Age ranges allow you to better understand target demographics.', 'statsmodule').'</p>
+							<p>' . $this->l('Age ranges allow you to better understand target demographics.') . '</p>
 							<hr/>
-							<a class="btn btn-default export-csv" href="'.Tools::safeOutput($_SERVER['REQUEST_URI'].'&export=1&exportType=age').'">
-								<i class="icon-cloud-upload"></i> '.Translate::getModuleTranslation('statsmodule', 'CSV Export', 'statsmodule').'
+							<a class="btn btn-default export-csv" href="' . Tools::safeOutput($_SERVER['REQUEST_URI'] . '&export=1&exportType=age') . '">
+								<i class="icon-cloud-upload"></i> ' . $this->l('CSV Export') . '
 							</a>
 						</div>
 					</div>
@@ -145,16 +152,13 @@ class StatsPersonalInfos extends StatsModule
 				<div class="row row-margin-bottom">
 					<div class="col-lg-12">
 						<div class="col-lg-8">
-							'.$this->engine($this->type, array(
-                    'type'   => 'pie',
-                    'option' => 'country',
-                )).'
+							' . $this->engine([ 'type' => 'pie', 'option' => 'country' ]) . '
 						</div>
 						<div class="col-lg-4">
-							<p>'.Translate::getModuleTranslation('statsmodule', 'Country distribution allows you to analyze which part of the World your customers are shopping from.', 'statsmodule').'</p>
+							<p>' . $this->l('Country distribution allows you to analyze which part of the World your customers are shopping from.') . '</p>
 							<hr/>
-							<a class="btn btn-default export-csv" href="'.Tools::safeOutput($_SERVER['REQUEST_URI'].'&export=1&exportType=country').'">
-								<i class="icon-cloud-upload"></i> '.Translate::getModuleTranslation('statsmodule', 'CSV Export', 'statsmodule').'
+							<a class="btn btn-default export-csv" href="' . Tools::safeOutput($_SERVER['REQUEST_URI'] . '&export=1&exportType=country') . '">
+								<i class="icon-cloud-upload"></i> ' . $this->l('CSV Export') . '
 							</a>
 						</div>
 					</div>
@@ -162,16 +166,13 @@ class StatsPersonalInfos extends StatsModule
 				<div class="row row-margin-bottom">
 					<div class="col-lg-12">
 						<div class="col-lg-8">
-							'.$this->engine($this->type, array(
-                    'type'   => 'pie',
-                    'option' => 'currency',
-                )).'
+							' . $this->engine(['type' => 'pie', 'option' => 'currency']) . '
 						</div>
 						<div class="col-lg-4">
-							<p>'.Translate::getModuleTranslation('statsmodule', 'Currency range allows you to determine which currency your customers are using.', 'statsmodule').'</p>
+							<p>' . $this->l('Currency range allows you to determine which currency your customers are using.') . '</p>
 							<hr/>
-							<a class="btn btn-default export-csv" href="'.Tools::safeOutput($_SERVER['REQUEST_URI'].'&export=1&exportType=currency').'">
-								<i class="icon-cloud-upload"></i> '.Translate::getModuleTranslation('statsmodule', 'CSV Export', 'statsmodule').'
+							<a class="btn btn-default export-csv" href="' . Tools::safeOutput($_SERVER['REQUEST_URI'] . '&export=1&exportType=currency') . '">
+								<i class="icon-cloud-upload"></i> ' . $this->l('CSV Export') . '
 							</a>
 						</div>
 					</div>
@@ -179,166 +180,173 @@ class StatsPersonalInfos extends StatsModule
 				<div class="row row-margin-bottom">
 					<div class="col-lg-12">
 						<div class="col-lg-8">
-							'.$this->engine($this->type, array(
-                    'type'   => 'pie',
-                    'option' => 'language',
-                )).'
+							' . $this->engine(['type' => 'pie', 'option' => 'language']) . '
 						</div>
 						<div class="col-lg-4">
-							<p>'.Translate::getModuleTranslation('statsmodule', 'Language distribution allows you to analyze the browsing language used by your customers.', 'statsmodule').'</p>
+							<p>' . $this->l('Language distribution allows you to analyze the browsing language used by your customers.') . '</p>
 							<hr/>
-							<a class="btn btn-default export-csv" href="'.Tools::safeOutput($_SERVER['REQUEST_URI'].'&export=1&exportType=language').'">
-								<i class="icon-cloud-upload"></i> '.Translate::getModuleTranslation('statsmodule', 'CSV Export', 'statsmodule').'
+							<a class="btn btn-default export-csv" href="' . Tools::safeOutput($_SERVER['REQUEST_URI'] . '&export=1&exportType=language') . '">
+								<i class="icon-cloud-upload"></i> ' . $this->l('CSV Export') . '
 							</a>
 						</div>
 					</div>
 				</div>';
-        } else
-            $this->html .= '<p>'.Translate::getModuleTranslation('statsmodule', 'No customers have registered yet.', 'statsmodule').'</p>';
+        } else {
+            $this->html .= '<p>' . $this->l('No customers have registered yet.') . '</p>';
+        }
 
         return $this->html;
     }
 
+    /**
+     * @param string $option
+     * @param int $layers
+     *
+     * @return void
+     */
     public function setOption($option, $layers = 1)
     {
         $this->option = $option;
     }
 
+    /**
+     * @param int $layers
+     *
+     * @return void
+     * @throws PrestaShopException
+     */
     protected function getData($layers)
     {
+        $conn = Db::readOnly();
+
         switch ($this->option) {
-            case 'gender':
-                $this->_titles['main'] = Translate::getModuleTranslation('statsmodule', 'Gender distribution', 'statsmodule');
-                $genders = array(
-                    0 => Translate::getModuleTranslation('statsmodule', 'Male', 'statsmodule'),
-                    1 => Translate::getModuleTranslation('statsmodule', 'Female', 'statsmodule'),
-                    2 => Translate::getModuleTranslation('statsmodule', 'Unknown', 'statsmodule'),
-                );
-
-                $sql = 'SELECT g.type, c.id_gender, COUNT(c.id_customer) AS total
-						FROM '._DB_PREFIX_.'customer c
-						LEFT JOIN '._DB_PREFIX_.'gender g ON c.id_gender = g.id_gender
-						WHERE 1
-							'.Shop::addSqlRestriction(Shop::SHARE_CUSTOMER, 'c').'
-						GROUP BY c.id_gender';
-                $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
-
-                $genders_results = array();
-                foreach ($result as $row) {
-                    $type = (is_null($row['type'])) ? 2 : $row['type'];
-                    if (!isset($genders_results[$type]))
-                        $genders_results[$type] = 0;
-                    $genders_results[$type] += $row['total'];
+            case 'social-titles':
+                $titles = [
+                    0 => $this->l('Unknown')
+                ];
+                /** @var Gender $gender */
+                foreach (Gender::getGenders($this->context->language->id) as $gender) {
+                    $titles[$gender->id] = $gender->name;
                 }
+                $this->_titles['main'] = $this->l('Social titles distribution');
 
-                foreach ($genders_results as $type => $total) {
-                    $this->_values[] = $total;
-                    $this->_legend[] = $genders[$type];
+                $sql = 'SELECT g.id_gender, COUNT(c.id_customer) AS total
+						FROM ' . _DB_PREFIX_ . 'customer c
+						LEFT JOIN ' . _DB_PREFIX_ . 'gender g ON (c.id_gender = g.id_gender)
+						WHERE 1
+							' . Shop::addSqlRestriction(Shop::SHARE_CUSTOMER, 'c') . '
+						GROUP BY g.id_gender';
+                $result = $conn->getArray($sql);
+
+                foreach ($result as $row) {
+                    $genderId = (int)$row['id_gender'];
+                    $this->_values[] = (int)$row['total'];
+                    $this->_legend[] = $titles[$genderId];
                 }
                 break;
 
             case 'age':
-                $this->_titles['main'] = Translate::getModuleTranslation('statsmodule', 'Age range', 'statsmodule');
+                $this->_titles['main'] = $this->l('Age range');
 
                 // 0 - 18 years
                 $sql = 'SELECT COUNT(`id_customer`) AS total
-						FROM `'._DB_PREFIX_.'customer`
+						FROM `' . _DB_PREFIX_ . 'customer`
 						WHERE (YEAR(CURDATE()) - YEAR(`birthday`)) - (RIGHT(CURDATE(), 5) < RIGHT(`birthday`, 5)) < 18
-							'.Shop::addSqlRestriction(Shop::SHARE_CUSTOMER).'
+							' . Shop::addSqlRestriction(Shop::SHARE_CUSTOMER) . '
 							AND `birthday` IS NOT NULL';
-                $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
+                $result = $conn->getRow($sql);
                 if (isset($result['total']) && $result['total']) {
                     $this->_values[] = $result['total'];
-                    $this->_legend[] = Translate::getModuleTranslation('statsmodule', '0-18', 'statsmodule');
+                    $this->_legend[] = $this->l('0-18');
                 }
 
                 // 18 - 24 years
                 $sql = 'SELECT COUNT(`id_customer`) AS total
-						FROM `'._DB_PREFIX_.'customer`
+						FROM `' . _DB_PREFIX_ . 'customer`
 						WHERE (YEAR(CURDATE()) - YEAR(`birthday`)) - (RIGHT(CURDATE(), 5) < RIGHT(`birthday`, 5)) >= 18
 							AND (YEAR(CURDATE()) - YEAR(`birthday`)) - (RIGHT(CURDATE(), 5) < RIGHT(`birthday`, 5)) < 25
-							'.Shop::addSqlRestriction(Shop::SHARE_CUSTOMER).'
+							' . Shop::addSqlRestriction(Shop::SHARE_CUSTOMER) . '
 							AND `birthday` IS NOT NULL';
-                $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
+                $result = $conn->getRow($sql);
                 if (isset($result['total']) && $result['total']) {
                     $this->_values[] = $result['total'];
-                    $this->_legend[] = Translate::getModuleTranslation('statsmodule', '18-24', 'statsmodule');
+                    $this->_legend[] = $this->l('18-24');
                 }
 
                 // 25 - 34 years
                 $sql = 'SELECT COUNT(`id_customer`) AS total
-						FROM `'._DB_PREFIX_.'customer`
+						FROM `' . _DB_PREFIX_ . 'customer`
 						WHERE (YEAR(CURDATE()) - YEAR(`birthday`)) - (RIGHT(CURDATE(), 5) < RIGHT(`birthday`, 5)) >= 25
 							AND (YEAR(CURDATE()) - YEAR(`birthday`)) - (RIGHT(CURDATE(), 5) < RIGHT(`birthday`, 5)) < 35
-							'.Shop::addSqlRestriction(Shop::SHARE_CUSTOMER).'
+							' . Shop::addSqlRestriction(Shop::SHARE_CUSTOMER) . '
 							AND `birthday` IS NOT NULL';
-                $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
+                $result = $conn->getRow($sql);
                 if (isset($result['total']) && $result['total']) {
                     $this->_values[] = $result['total'];
-                    $this->_legend[] = Translate::getModuleTranslation('statsmodule', '25-34', 'statsmodule');
+                    $this->_legend[] = $this->l('25-34');
                 }
 
                 // 35 - 49 years
                 $sql = 'SELECT COUNT(`id_customer`) AS total
-						FROM `'._DB_PREFIX_.'customer`
+						FROM `' . _DB_PREFIX_ . 'customer`
 						WHERE (YEAR(CURDATE()) - YEAR(`birthday`)) - (RIGHT(CURDATE(), 5) < RIGHT(`birthday`, 5)) >= 35
 							AND (YEAR(CURDATE()) - YEAR(`birthday`)) - (RIGHT(CURDATE(), 5) < RIGHT(`birthday`, 5)) < 50
-							'.Shop::addSqlRestriction(Shop::SHARE_CUSTOMER).'
+							' . Shop::addSqlRestriction(Shop::SHARE_CUSTOMER) . '
 							AND `birthday` IS NOT NULL';
-                $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
+                $result = $conn->getRow($sql);
                 if (isset($result['total']) && $result['total']) {
                     $this->_values[] = $result['total'];
-                    $this->_legend[] = Translate::getModuleTranslation('statsmodule', '35-49', 'statsmodule');
+                    $this->_legend[] = $this->l('35-49');
                 }
 
                 // 50 - 59 years
                 $sql = 'SELECT COUNT(`id_customer`) AS total
-						FROM `'._DB_PREFIX_.'customer`
+						FROM `' . _DB_PREFIX_ . 'customer`
 						WHERE (YEAR(CURDATE()) - YEAR(`birthday`)) - (RIGHT(CURDATE(), 5) < RIGHT(`birthday`, 5)) >= 50
 							AND (YEAR(CURDATE()) - YEAR(`birthday`)) - (RIGHT(CURDATE(), 5) < RIGHT(`birthday`, 5)) < 60
-							'.Shop::addSqlRestriction(Shop::SHARE_CUSTOMER).'
+							' . Shop::addSqlRestriction(Shop::SHARE_CUSTOMER) . '
 							AND `birthday` IS NOT NULL';
-                $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
+                $result = $conn->getRow($sql);
                 if (isset($result['total']) && $result['total']) {
                     $this->_values[] = $result['total'];
-                    $this->_legend[] = Translate::getModuleTranslation('statsmodule', '50-59', 'statsmodule');
+                    $this->_legend[] = $this->l('50-59');
                 }
 
                 // More than 60 years
                 $sql = 'SELECT COUNT(`id_customer`) AS total
-						FROM `'._DB_PREFIX_.'customer`
+						FROM `' . _DB_PREFIX_ . 'customer`
 						WHERE (YEAR(CURDATE()) - YEAR(`birthday`)) - (RIGHT(CURDATE(), 5) < RIGHT(`birthday`, 5)) >= 60
-							'.Shop::addSqlRestriction(Shop::SHARE_CUSTOMER).'
+							' . Shop::addSqlRestriction(Shop::SHARE_CUSTOMER) . '
 							AND `birthday` IS NOT NULL';
-                $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
+                $result = $conn->getRow($sql);
                 if (isset($result['total']) && $result['total']) {
                     $this->_values[] = $result['total'];
-                    $this->_legend[] = Translate::getModuleTranslation('statsmodule', '60+', 'statsmodule');
+                    $this->_legend[] = $this->l('60+');
                 }
 
                 // Total unknown
                 $sql = 'SELECT COUNT(`id_customer`) AS total
-						FROM `'._DB_PREFIX_.'customer`
+						FROM `' . _DB_PREFIX_ . 'customer`
 						WHERE `birthday` IS NULL
-							'.Shop::addSqlRestriction(Shop::SHARE_CUSTOMER);
-                $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
+							' . Shop::addSqlRestriction(Shop::SHARE_CUSTOMER);
+                $result = $conn->getRow($sql);
                 if (isset($result['total']) && $result['total']) {
                     $this->_values[] = $result['total'];
-                    $this->_legend[] = Translate::getModuleTranslation('statsmodule', 'Unknown', 'statsmodule');
+                    $this->_legend[] = $this->l('Unknown');
                 }
                 break;
 
             case 'country':
-                $this->_titles['main'] = Translate::getModuleTranslation('statsmodule', 'Country distribution', 'statsmodule');
+                $this->_titles['main'] = $this->l('Country distribution');
                 $sql = 'SELECT cl.`name`, COUNT(c.`id_country`) AS total
-						FROM `'._DB_PREFIX_.'address` a
-						LEFT JOIN `'._DB_PREFIX_.'customer` cu ON cu.id_customer = a.id_customer
-						LEFT JOIN `'._DB_PREFIX_.'country` c ON a.`id_country` = c.`id_country`
-						LEFT JOIN `'._DB_PREFIX_.'country_lang` cl ON (c.`id_country` = cl.`id_country` AND cl.`id_lang` = '.(int) $this->context->language->id.')
+						FROM `' . _DB_PREFIX_ . 'address` a
+						LEFT JOIN `' . _DB_PREFIX_ . 'customer` cu ON cu.id_customer = a.id_customer
+						LEFT JOIN `' . _DB_PREFIX_ . 'country` c ON a.`id_country` = c.`id_country`
+						LEFT JOIN `' . _DB_PREFIX_ . 'country_lang` cl ON (c.`id_country` = cl.`id_country` AND cl.`id_lang` = ' . (int)$this->context->language->id . ')
 						WHERE a.id_customer != 0
-							'.Shop::addSqlRestriction(Shop::SHARE_CUSTOMER, 'cu').'
+							' . Shop::addSqlRestriction(Shop::SHARE_CUSTOMER, 'cu') . '
 						GROUP BY c.`id_country`';
-                $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+                $result = $conn->getArray($sql);
                 foreach ($result as $row) {
                     $this->_values[] = $row['total'];
                     $this->_legend[] = $row['name'];
@@ -346,14 +354,13 @@ class StatsPersonalInfos extends StatsModule
                 break;
 
             case 'currency':
-                $this->_titles['main'] = Translate::getModuleTranslation('statsmodule', 'Currency distribution', 'statsmodule');
+                $this->_titles['main'] = $this->l('Currency distribution');
                 $sql = 'SELECT c.`name`, COUNT(c.`id_currency`) AS total
-						FROM `'._DB_PREFIX_.'orders` o
-						LEFT JOIN `'._DB_PREFIX_.'currency` c ON o.`id_currency` = c.`id_currency`
-						WHERE 1
-							'.Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o').'
+						FROM `' . _DB_PREFIX_ . 'orders` o
+						LEFT JOIN `' . _DB_PREFIX_ . 'currency` c ON o.`id_currency` = c.`id_currency`
+						WHERE 1 ' . Shop::addSqlRestriction(false, 'o') . '
 						GROUP BY c.`id_currency`';
-                $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+                $result = $conn->getArray($sql);
                 foreach ($result as $row) {
                     $this->_values[] = $row['total'];
                     $this->_legend[] = $row['name'];
@@ -361,14 +368,13 @@ class StatsPersonalInfos extends StatsModule
                 break;
 
             case 'language':
-                $this->_titles['main'] = Translate::getModuleTranslation('statsmodule', 'Language distribution', 'statsmodule');
+                $this->_titles['main'] = $this->l('Language distribution');
                 $sql = 'SELECT c.`name`, COUNT(c.`id_lang`) AS total
-						FROM `'._DB_PREFIX_.'orders` o
-						LEFT JOIN `'._DB_PREFIX_.'lang` c ON o.`id_lang` = c.`id_lang`
-						WHERE 1
-							'.Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o').'
+						FROM `' . _DB_PREFIX_ . 'orders` o
+						LEFT JOIN `' . _DB_PREFIX_ . 'lang` c ON o.`id_lang` = c.`id_lang`
+						WHERE 1 ' . Shop::addSqlRestriction(false, 'o') . '
 						GROUP BY c.`id_lang`';
-                $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+                $result = $conn->getArray($sql);
                 foreach ($result as $row) {
                     $this->_values[] = $row['total'];
                     $this->_legend[] = $row['name'];
